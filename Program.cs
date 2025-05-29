@@ -1,25 +1,22 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorPages();
-
+// ↓ HTTPS強制リダイレクトを有効化していない（重要！）
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+// ↓ ここでリクエストのプロトコル確認（ログ用）
+app.Use(async (context, next) =>
 {
-    app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+    var proto = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
+    Console.WriteLine($"[アクセスログ] プロトコル: {proto}, パス: {context.Request.Path}");
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
+    await next.Invoke();
+});
 
-app.UseRouting();
-
-app.UseAuthorization();
-
-app.MapRazorPages();
+// ↓ 単純なテキスト応答
+app.MapGet("/", () => "Hello from .NET 8 on HTTP!");
 
 app.Run();
