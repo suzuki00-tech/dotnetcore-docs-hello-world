@@ -4,8 +4,8 @@ using YourNamespace.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 接続文字列の取得
-var connectionString = Environment.GetEnvironmentVariable("DefaultConnection");
+// appsettings.json から読み込む
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // DbContext の登録
 builder.Services.AddDbContext<AppDbContext>(options =>
