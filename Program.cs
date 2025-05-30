@@ -1,22 +1,36 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using YourNamespace.Data;
+using YourNamespace.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ↓ HTTPS強制リダイレクトを有効化していない（重要！）
+// 接続文字列の取得
+var connectionString = Environment.GetEnvironmentVariable("DefaultConnection");
+
+// DbContext の登録
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 var app = builder.Build();
 
-// ↓ ここでリクエストのプロトコル確認（ログ用）
-app.Use(async (context, next) =>
+// データベースのマイグレーションを適用
+using (var scope = app.Services.CreateScope())
 {
-    var proto = context.Request.Headers["X-Forwarded-Proto"].FirstOrDefault();
-    Console.WriteLine($"[アクセスログ] プロトコル: {proto}, パス: {context.Request.Path}");
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
 
-    await next.Invoke();
+// エンドポイントの定義
+app.MapGet("/", () => "Hello World!");
+
+app.MapGet("/customers", async (AppDbContext db) =>
+    await db.Customers.ToListAsync());
+
+app.MapPost("/customers", async (AppDbContext db, Customer customer) =>
+{
+    db.Customers.Add(customer);
+    await db.SaveChangesAsync();
+    return Results.Created($"/customers/{customer.Id}", customer);
 });
-
-// ↓ 単純なテキスト応答
-app.MapGet("/", () => "Hello from .NET 8 on HTTP!");
 
 app.Run();
